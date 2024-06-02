@@ -8,21 +8,28 @@ To use the `trade.py` script, launch the appImage and enter the exact parameters
 
 Note that every path should be absolute (`/`)
 
-![](repo/workspace-setup.png)
+<div style="display: flex; justify-content: center;">
+    <img src="repo/workspace-setup.png" width="600"/>
+</div>
 
 ## Results
 
-### High average
+### High average ~1850$ (+850$)
 ![](repo/high_example.png)
 
 w/ stderr
 ![](repo/stderr_example.png)
 
-### Mid average
-![](repo/mid_example.png)
-
-### Low avergage
-![](repo/low_example.png)
+<div style="display: flex; justify-content: space-between;">
+    <div style="width: 400px; text-align: center;">
+        <h3>Mid average ~1750$ (+750$)</h3>
+        <img src="repo/mid_example.png" width="400"/>
+    </div>
+    <div style="width: 400px; text-align: center;">
+        <h3>Low average ~1700$ (+700$)</h3>
+        <img src="repo/low_example.png" width="400"/>
+    </div>
+</div>
 
 ## EPITECH Students
 Beware that I'm not responsible for any -42, you have been warned!
