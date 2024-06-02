@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 ##
 ## EPITECH PROJECT, 2024
 ## CNA-trade
@@ -6,7 +8,6 @@
 ##
 
 import sys
-import numpy as np
 
 class Candle:
     def __init__(self, format, intel):
@@ -25,9 +26,13 @@ class Candle:
 class Chart:
     def __init__(self):
         self.closes = []
+        self.highs = []
+        self.lows = []
 
     def add_candle(self, candle: Candle):
         self.closes.append(candle.close)
+        self.highs.append(candle.high)
+        self.lows.append(candle.low)
 
 class BotState:
     def __init__(self):
@@ -92,11 +97,11 @@ class Bot:
             self.act()
 
     def act(self):
-
         usdt = self.botState.stacks.get("USDT", 0)
+        btc = self.botState.stacks.get("BTC", 0)
         chart = self.botState.charts.get("USDT_BTC", Chart())
 
-        if len(chart.closes) < 50:
+        if len(chart.closes) < 30:
             print("no_moves", flush=True)
             return
 
@@ -105,32 +110,29 @@ class Bot:
         long_ema = self.get_ema(chart.closes, 26)
         macd, signal = self.get_macd(chart.closes)
         rsi = self.get_rsi(chart.closes)
+        bollinger_upper, bollinger_lower = self.get_bollinger_bands(chart.closes)
 
         current_closing_price = chart.closes[-1]
         affordable = usdt / current_closing_price
 
-        if short_ema > mid_ema > long_ema and macd > signal and rsi < 80 and usdt >= 100:
+        if (short_ema > mid_ema > long_ema and macd > signal and rsi < 70 and
+            current_closing_price < bollinger_upper):
             amount_to_buy = 0.5 * affordable * (1 - self.botState.transactionFee / 100)
-            if amount_to_buy > 0.001:
-                # STDERR TO DEBUG #
+            if amount_to_buy > 0:
                 sys.stderr.write(f"===== BUYING =====\n")
                 sys.stderr.write(f"current stacks: {self.botState.stacks}\n")
-                sys.stderr.write(f"amount: {amount_to_buy}:USDT\n")
+                sys.stderr.write(f"amount: {amount_to_buy} USDT\n")
                 print(f'buy USDT_BTC {amount_to_buy}', flush=True)
-            else:
-                print("no_moves", flush=True)
-        elif short_ema < mid_ema < long_ema and macd < signal and rsi > 20 and "BTC" in self.botState.stacks:
-            btc_amount = self.botState.stacks["BTC"]
-            if btc_amount > 0.001:
-                # STDERR TO DEBUG #
+                return
+        elif (short_ema < mid_ema < long_ema and macd < signal and rsi > 30 and
+              current_closing_price > bollinger_lower):
+            if btc > 0:
                 sys.stderr.write(f"===== SELLING =====\n")
                 sys.stderr.write(f"current stacks: {self.botState.stacks}\n")
-                sys.stderr.write(f"amount: {btc_amount}:BTC\n")
-                print(f'sell USDT_BTC {btc_amount}', flush=True)
-            else:
-                print("no_moves", flush=True)
-        else:
-            print("no_moves", flush=True)
+                sys.stderr.write(f"amount: {btc} BTC\n")
+                print(f'sell USDT_BTC {btc}', flush=True)
+                return
+        print("no_moves", flush=True)
 
     @staticmethod
     def get_ema(prices, window):
@@ -141,7 +143,7 @@ class Bot:
         return ema[-1]
 
     @staticmethod
-    def get_macd(prices, short_window=12, long_window=26, signal_window=5):
+    def get_macd(prices, short_window=12, long_window=26, signal_window=9):
         short_ema = Bot.get_ema(prices, short_window)
         long_ema = Bot.get_ema(prices, long_window)
         macd = short_ema - long_ema
@@ -150,17 +152,16 @@ class Bot:
 
     @staticmethod
     def get_rsi(prices, period=14):
-        deltas = np.diff(prices)
+        deltas = [prices[i] - prices[i - 1] for i in range(1, len(prices))]
         seed = deltas[:period + 1]
-        up = seed[seed >= 0].sum() / period
-        down = -seed[seed < 0].sum() / period
+        up = sum(val for val in seed if val >= 0) / period
+        down = -sum(val for val in seed if val < 0) / period
         rs = up / down
-        rsi = np.zeros_like(prices)
-        rsi[:period] = 100. - 100. / (1. + rs)
+        rsi = [0] * len(prices)
+        rsi[period] = 100. - 100. / (1. + rs)
 
-        for i in range(period, len(prices)):
-            delta = deltas[i - 1]
-
+        for i in range(period + 1, len(prices)):
+            delta = prices[i] - prices[i - 1]
             if delta > 0:
                 up_val = delta
                 down_val = 0.
@@ -175,6 +176,14 @@ class Bot:
             rsi[i] = 100. - 100. / (1. + rs)
 
         return rsi[-1]
+
+    @staticmethod
+    def get_bollinger_bands(prices, window=15, num_std_dev=1.5):
+        sma = sum(prices[-window:]) / window
+        std_dev = (sum((x - sma) ** 2 for x in prices[-window:]) / window) ** 0.5
+        upper_band = sma + (std_dev * num_std_dev)
+        lower_band = sma - (std_dev * num_std_dev)
+        return upper_band, lower_band
 
 if __name__ == "__main__":
     mybot = Bot()
