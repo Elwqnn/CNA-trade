@@ -108,7 +108,7 @@ class Bot:
         short_ema = self.get_ema(chart.closes, 5)
         mid_ema = self.get_ema(chart.closes, 12)
         long_ema = self.get_ema(chart.closes, 26)
-        macd, signal = self.get_macd(chart.closes)
+        macd, signal = self.get_macd(chart.closes, mid_ema, long_ema)
         rsi = self.get_rsi(chart.closes)
         bollinger_upper, bollinger_lower = self.get_bollinger_bands(chart.closes)
 
@@ -118,7 +118,7 @@ class Bot:
         if (short_ema > mid_ema > long_ema and macd > signal and rsi < 70 and
             current_closing_price < bollinger_upper):
             amount_to_buy = 0.5 * affordable * (1 - self.botState.transactionFee / 100)
-            if amount_to_buy > 0:
+            if amount_to_buy > 0.0001:
                 sys.stderr.write(f"===== BUYING =====\n")
                 sys.stderr.write(f"current stacks: {self.botState.stacks}\n")
                 sys.stderr.write(f"amount: {amount_to_buy} USDT\n")
@@ -126,7 +126,7 @@ class Bot:
                 return
         elif (short_ema < mid_ema < long_ema and macd < signal and rsi > 30 and
               current_closing_price > bollinger_lower):
-            if btc > 0:
+            if btc > 0.0001:
                 sys.stderr.write(f"===== SELLING =====\n")
                 sys.stderr.write(f"current stacks: {self.botState.stacks}\n")
                 sys.stderr.write(f"amount: {btc} BTC\n")
@@ -143,9 +143,7 @@ class Bot:
         return ema[-1]
 
     @staticmethod
-    def get_macd(prices, short_window=12, long_window=26, signal_window=9):
-        short_ema = Bot.get_ema(prices, short_window)
-        long_ema = Bot.get_ema(prices, long_window)
+    def get_macd(prices, short_ema, long_ema, signal_window=9):
         macd = short_ema - long_ema
         signal = Bot.get_ema([macd], signal_window)
         return macd, signal
